@@ -9,7 +9,7 @@
 import UIKit
 import AVFoundation
 
-typealias ComplectionHandler = (_ filePath: URL) -> Void
+typealias CompletionHandler = (_ filePath: URL) -> Void
 
 class ARAssetWriter: NSObject {
     var isWriting = false
@@ -101,7 +101,7 @@ class ARAssetWriter: NSObject {
             }
         }
     }
-    func stopWriting(_ completion: @escaping ComplectionHandler) {
+    func stopWriting(_ completion: @escaping CompletionHandler) {
         if self.isWriting {
             self.isWriting = false
             

@@ -102,7 +102,7 @@ class ARRecorder: NSObject {
             }
         }
     }
-    func stopRecording(complection: @escaping ComplectionHandler) {
+    func stopRecording(complection: @escaping CompletionHandler) {
         if self.status == .recording {
             self.status = .complete
             self.displayLink.invalidate()
