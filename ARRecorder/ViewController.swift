@@ -23,14 +23,7 @@ class ViewController: UIViewController {
         let recorder = ARRecorder()
         return recorder
     }()
-    
-    lazy var setupButton: UIButton = {
-        let button = UIButton(type: .custom)
-        button.backgroundColor = .brown
-        button.setTitle("setup", for: .normal)
-        button.addTarget(self, action: #selector(setupButtonAction), for: .touchUpInside)
-        return button
-    }()
+
     lazy var startButton: UIButton = {
         let button = UIButton(type: .custom)
         button.backgroundColor = .brown
@@ -43,7 +36,6 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         self.view.addSubview(self.arView)
-        self.view.addSubview(self.setupButton)
         self.view.addSubview(self.startButton)
         
         self.startButton.isUserInteractionEnabled = false
@@ -52,8 +44,9 @@ class ViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         self.arView.frame = self.view.bounds
-        self.setupButton.frame = CGRect(x: 20, y: 100, width: 100, height: 50)
-        self.startButton.frame = CGRect(x: 200, y: 100, width: 100, height: 50)
+
+        self.startButton.frame = CGRect(x: 0, y: 0, width: 100, height: 50)
+        self.startButton.center = self.view.center
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -63,14 +56,10 @@ class ViewController: UIViewController {
         self.session.run(config, options: [ARSession.RunOptions.resetTracking, ARSession.RunOptions.removeExistingAnchors])
     }
     
+    let dispatchQueue = DispatchQueue(label: "fdasf")
+    
     @objc func setupButtonAction() {
-        if self.recorder.status == .unKnown {
-            do {
-                try self.recorder.setupSession()
-            } catch {
-                print(error.localizedDescription)
-            }
-        }
+        
         
         self.startButton.isUserInteractionEnabled = true
         self.startButton.backgroundColor = .red
@@ -83,8 +72,6 @@ class ViewController: UIViewController {
             self.startButton.isSelected = false
             self.startButton.backgroundColor = .red
         } else {
-            
-            self.recorder.startSession()
             self.recorder.startRecording(self.arView)
             self.startButton.isSelected = true
             self.startButton.backgroundColor = .green

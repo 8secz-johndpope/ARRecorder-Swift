@@ -83,10 +83,23 @@ class ARRecorder: NSObject {
         }
     }
     func startRecording(_ scnView: ARSCNView) {
-        if self.status == .ready || self.status == .complete {
-            self.status = .recording
-            self.renderer.scene = scnView.scene
-            self.assetWriter?.startWriting()
+        self.recorderQueue.async {
+            if self.status == .unKnown {
+                do {
+                    try self.setupSession()
+                    
+                } catch {
+                    print(error.localizedDescription)
+                }
+            }
+        }
+        self.recorderQueue.async {
+            self.startSession()
+            if self.status == .ready || self.status == .complete {
+                self.status = .recording
+                self.renderer.scene = scnView.scene
+                self.assetWriter?.startWriting()
+            }
         }
     }
     func stopRecording(complection: @escaping ComplectionHandler) {
