@@ -37,8 +37,6 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         self.view.addSubview(self.arView)
         self.view.addSubview(self.startButton)
-        
-        self.startButton.isUserInteractionEnabled = false
     }
     
     override func viewDidLayoutSubviews() {
@@ -59,8 +57,6 @@ class ViewController: UIViewController {
     let dispatchQueue = DispatchQueue(label: "fdasf")
     
     @objc func setupButtonAction() {
-        
-        
         self.startButton.isUserInteractionEnabled = true
         self.startButton.backgroundColor = .red
     }
@@ -77,15 +73,17 @@ class ViewController: UIViewController {
             self.startButton.backgroundColor = .green
         }
     }
-
 }
-extension ViewController: ARSCNViewDelegate
+extension ViewController: ARSCNViewDelegate, ARSessionDelegate
 {
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         let box = SCNNode()
         box.geometry = SCNBox(width: 0.1, height: 0.1, length: 0.1, chamferRadius: 0)
         box.geometry?.firstMaterial?.diffuse.contents = UIColor.brown
         node.addChildNode(box)
+    }
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        self.recorder.renderFrame()
     }
 }
 

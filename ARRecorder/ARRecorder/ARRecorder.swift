@@ -10,7 +10,7 @@ import ARKit
 import AVFoundation
 
 @available(iOS 11.0, *)
-class ARRecorder: NSObject {
+open class ARRecorder: NSObject {
     enum Status {
         case unKnown
         case ready
@@ -34,6 +34,7 @@ class ARRecorder: NSObject {
     var renderer: SCNRenderer = SCNRenderer(device: nil, options: nil)
     
     var status: Status = .unKnown
+    var isRecording: Bool = false
     
     var sessionPreset: AVCaptureSession.Preset {
         return AVCaptureSession.Preset.high
@@ -42,7 +43,7 @@ class ARRecorder: NSObject {
     override init() {
         let width = UIScreen.main.bounds.size.width
         let height = UIScreen.main.bounds.size.height
-        let scale = UIScreen.main.scale
+        let scale: CGFloat = 1
         
         self.bufferSize = CGSize(width: width * scale, height: height * scale)
         
@@ -102,7 +103,7 @@ class ARRecorder: NSObject {
             }
         }
     }
-    func stopRecording(complection: @escaping CompletionHandler) {
+    func stopRecording(finished: @escaping FinishedHandler) {
         if self.status == .recording {
             self.status = .complete
             self.displayLink.invalidate()
@@ -110,7 +111,7 @@ class ARRecorder: NSObject {
             self.renderer.scene = nil
             
             self.stopSession()
-            self.assetWriter?.stopWriting(complection)
+            self.assetWriter?.stopWriting(finished)
         }
     }
     
@@ -153,7 +154,12 @@ class ARRecorder: NSObject {
         let audioSession = AVAudioSession.sharedInstance()
 
         do {
-            try audioSession.setCategory(AVAudioSession.Category.playAndRecord, mode: AVAudioSession.Mode.videoRecording, options:[AVAudioSession.CategoryOptions.mixWithOthers,AVAudioSession.CategoryOptions.allowBluetooth,AVAudioSession.CategoryOptions.defaultToSpeaker,AVAudioSession.CategoryOptions.interruptSpokenAudioAndMixWithOthers])
+            try audioSession.setCategory(AVAudioSession.Category.playAndRecord,
+                                         mode: AVAudioSession.Mode.videoRecording,
+                                         options:[AVAudioSession.CategoryOptions.mixWithOthers,
+                                                  AVAudioSession.CategoryOptions.allowBluetooth,
+                                                  AVAudioSession.CategoryOptions.defaultToSpeaker,
+                                                  AVAudioSession.CategoryOptions.interruptSpokenAudioAndMixWithOthers])
             try audioSession.setActive(true)
         } catch {
             throw error
@@ -161,16 +167,20 @@ class ARRecorder: NSObject {
     }
     
     @objc func renderFrame() {
-        self.recorderQueue.async {[weak self] in
-            if self?.assetWriter?.isWriting ?? false{
-                autoreleasepool{
-                    let buffer = self!.createCapturePixelBuffer()
-                    self?.assetWriter?.appendPixelBuffer(buffer)
+        if self.status == .recording && self.isRecording {
+            self.recorderQueue.async {[weak self] in
+                if self?.assetWriter?.isWriting ?? false {
+                    autoreleasepool{
+                        let buffer = self!.createCapturePixelBuffer()
+                        self?.assetWriter?.appendPixelBuffer(buffer)
+                    }
                 }
             }
         }
     }
     func createCapturePixelBuffer() -> CVPixelBuffer {
+        let time = CACurrentMediaTime()
+        let image = self.renderer.snapshot(atTime: time, with: self.bufferSize, antialiasingMode:SCNAntialiasingMode.multisampling4X)
         
         let pixelBufferPointer: UnsafeMutablePointer<CVPixelBuffer?> = UnsafeMutablePointer<CVPixelBuffer?>.allocate(capacity: 1)
         CVPixelBufferPoolCreatePixelBuffer(nil, self.assetWriter!.pixelBufferAdaptor!.pixelBufferPool!, pixelBufferPointer)
@@ -194,18 +204,21 @@ class ARRecorder: NSObject {
                                 bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
                                 space: CGColorSpaceCreateDeviceRGB(),
                                 bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue)
-        
-        let time = CACurrentMediaTime()
-        let image = self.renderer.snapshot(atTime: time, with: self.bufferSize, antialiasingMode:SCNAntialiasingMode.multisampling4X)
         context?.draw(image.cgImage!, in: CGRect(x: 0, y: 0, width: self.bufferSize.width, height: self.bufferSize.height))
         CVPixelBufferUnlockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
         return pixelBuffer
     }
 }
+@available(iOS 11.0, *)
 extension ARRecorder: AVCaptureAudioDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        if self.status == .recording && _displayLink == nil {
-            self.displayLink.add(to: RunLoop.main, forMode: RunLoop.Mode.common)
+    public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+//        if self.status == .recording && _displayLink == nil {
+//            self.displayLink.add(to: RunLoop.main, forMode: RunLoop.Mode.common)
+//        }
+        if self.status == .recording {
+            self.isRecording = true
+        } else {
+            self.isRecording = false
         }
         self.assetWriter?.appendSampleBuffer(sampleBuffer)
     }
